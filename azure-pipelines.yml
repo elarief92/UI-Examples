@@ -15,34 +15,46 @@ stages:
       #dotnetVersion: '4.7.2'
 
     steps:
-
-    # First step should be full clone
+    # 1. Full repository checkout
     - checkout: self
-      fetchDepth: 0  # Get full commit history
+      fetchDepth: 0
       displayName: 'Full Repository Checkout'
-      
-    # Verify .NET Framework version (optional diagnostic)
-    - powershell: |
-        Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full\' |
-        ForEach-Object { Get-ItemProperty $_.PSPath } |
-        Select-Object Version, Release |
-        Format-List
-      displayName: 'Check .NET Framework Version'
 
-    # NuGet setup
-    - task: NuGetToolInstaller@1
-      displayName: 'Install NuGet'
+# 2. .NET 4.7.2 validation (existing task)
+    - powershell: |
+        $regPath = "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full"
+        $requiredRelease = 461808
+        if (-not (Test-Path $regPath)) {
+            throw ".NET Framework registry key not found"
+        }
+        $netProps = Get-ItemProperty $regPath
+        if (-not $netProps.Release) {
+            throw "Release registry value missing"
+        }
+        if ($netProps.Release -lt $requiredRelease) {
+            throw ".NET Framework 4.7.2 not installed. Detected release: $($netProps.Release)"
+        }
+        Write-Host "Verified .NET Framework 4.7.2 (Release $requiredRelease)"
+      displayName: 'Enforce .NET 4.7.2'
+      failOnStderr: true
+
+    # 3. Update vulnerable packages
     - task: NuGetCommand@2
-      displayName: 'Update Vulnerable Packages'
+      displayName: 'Update Umbraco Packages'
       inputs:
         command: 'custom'
-        arguments: 'update Umbraco.Cms -Version 15.3.1'
-   
-    # Dependency restoration
+        restoreSolution: '$(solution)'
+
+    # 4. NuGet installer (existing)
+    - task: NuGetToolInstaller@1
+      displayName: 'Install NuGet'
+
+# 5. Restore packages (existing)
     - task: NuGetCommand@2
       displayName: 'Restore Packages'
       inputs:
         restoreSolution: '$(solution)'
+        feedsToUse: 'select'
 
     # Build solution
     - task: VSBuild@1
