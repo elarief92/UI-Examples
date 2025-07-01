@@ -3,9 +3,6 @@
 # Add steps that publish symbols, save build artifacts, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
 
-trigger:
-- develop
-
 pool:
   vmImage: 'windows-latest'
 
@@ -14,21 +11,30 @@ variables:
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
-steps:
-- task: NuGetToolInstaller@1
+  vsSolutionName: DeployOnPremSite
+  vsProjectName: DeployOnPremSite
+  umbracoDeployTriggerDeploy: $(Build.SourcesDirectory)\$(vsSolutionName)\$(vsProjectName)\TriggerDeploy.ps1
+  umbracoDeployReason: AzureDeployment
 
+
+steps:
+#1 NuGet Tool Install
+- task: NuGetToolInstaller@1
+  inputs:
+    versionSpec: '4.7.2'
+  displayName: Install NuGet
+
+#2 NuGet Restore
 - task: NuGetCommand@2
+  displayName: Restore NuGet packages
   inputs:
     restoreSolution: '$(solution)'
 
+#3 Build the VS Solution and publish the output to a zip file
 - task: VSBuild@1
+  displayName: Build solution
   inputs:
     solution: '$(solution)'
-    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)"'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
-
-- task: VSTest@2
-  inputs:
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site"'
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
