@@ -15,6 +15,12 @@ stages:
       #dotnetVersion: '4.7.2'
 
     steps:
+
+    # First step should be full clone
+    - checkout: self
+      fetchDepth: 0  # Get full commit history
+      displayName: 'Full Repository Checkout'
+      
     # Verify .NET Framework version (optional diagnostic)
     - powershell: |
         Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full\' |
@@ -26,7 +32,12 @@ stages:
     # NuGet setup
     - task: NuGetToolInstaller@1
       displayName: 'Install NuGet'
-
+    - task: NuGetCommand@2
+      displayName: 'Update Vulnerable Packages'
+      inputs:
+        command: 'custom'
+        arguments: 'update Umbraco.Cms -Version 15.3.1'
+   
     # Dependency restoration
     - task: NuGetCommand@2
       displayName: 'Restore Packages'
