@@ -12,16 +12,16 @@ stages:
       solution: '**/*.sln'
       buildPlatform: 'Any CPU'
       buildConfiguration: 'Release'
-      dotnetVersion: '4.7.2'
+      #dotnetVersion: '4.7.2'
 
     steps:
-    # Ensure correct .NET Framework version
-    - task: UseDotNet@2
-      displayName: 'Install .NET Framework $(dotnetVersion)'
-      inputs:
-        packageType: 'runtime'
-        version: '$(dotnetVersion)'
-        includePreview: true
+    # Verify .NET Framework version (optional diagnostic)
+    - powershell: |
+        Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full\' |
+        ForEach-Object { Get-ItemProperty $_.PSPath } |
+        Select-Object Version, Release |
+        Format-List
+      displayName: 'Check .NET Framework Version'
 
     # NuGet setup
     - task: NuGetToolInstaller@1
